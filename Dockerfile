@@ -1,7 +1,17 @@
 FROM python:3.12.9-slim
+# get git
+RUN apt-get update && \
+	apt-get install -y --no-install-recommends git && \
+	rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-COPY . /app
+WORKDIR /root/
+COPY requirements.txt .
 
-EXPOSE 3000
-CMD ["python", "-m", "http.server", "3000"]
+RUN python -m pip install --upgrade pip &&\
+	pip install -r requirements.txt
+
+
+COPY src src
+
+ENTRYPOINT ["python"]
+CMD ["src/app.py"]
