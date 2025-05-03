@@ -30,7 +30,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.WRITE_PERMISSION  }}
       - name: Build, tag, and publish image
         run: |
           IMG="ghcr.io/${{github.repository}}"
