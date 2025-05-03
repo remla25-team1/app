@@ -1,12 +1,12 @@
 from flask import Flask, jsonify, request, send_from_directory
-from flasgger import swag_from
+from flasgger import Swagger,swag_from
 from swagger_template import generate_swagger_doc
 from versionutil import VersionUtil
 import requests
 import os
 
 app = Flask(__name__, static_folder="static", template_folder="template")
-
+swagger = Swagger(app) 
 
 MODEL_SERVICE_URL = os.getenv("MODEL_SERVICE_URL", "http://localhost:8080")
 
@@ -18,7 +18,10 @@ def serve_index():
 # Analyze tweets sentiment
 @app.route("/sentiment", methods = ["POST"])
 @swag_from(generate_swagger_doc(
-    summary="Analyze sentiment of a tweet"
+    summary="Analyze sentiment of a tweet",
+    request_example= {"tweet": "Hello World!"},
+    response_example= {"result": "positive"},
+    required_fields=["tweet"]
 ))
 def sentiment():
     data = request.get_json()
@@ -40,7 +43,9 @@ def sentiment():
 #Get version
 @app.route("/version", methods=["GET"])
 @swag_from(generate_swagger_doc(
-    summary= "Get current version of the app."
+    summary= "Get current version of the app.",
+    response_example={"app_version": "v0.1.0"},
+    has_body=False
 ))
 def version():
     version = VersionUtil.get_version()
