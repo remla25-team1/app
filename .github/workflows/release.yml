@@ -2,6 +2,13 @@ name: Release
 on: 
   push: 
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+permissions:
+  contents: write  
+  issues: write       
+  pull-requests: write  
+  actions: write        
+  deployments: write
+  checks: write
 jobs:
   build:
     runs-on: ubuntu-24.04
