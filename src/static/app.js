@@ -28,9 +28,13 @@ async function analyze() {
       const res = await fetch("/version");
       if (!res.ok) throw new Error("Failed to fetch version");
       const data = await res.json();
-      versionDiv.textContent = `Version: ${data.version}`;
+      versionDiv.textContent = `Version: ${data.app_version}`;
     } catch (err) {
       versionDiv.textContent = "Version: unknown";
     }
   }
+  
+  window.onload = () => {
+    getVersion();
+  };
   
