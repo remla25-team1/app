@@ -1,5 +1,0 @@
-Flask==2.3.3
-flasgger==0.9.7.1
-requests
-
-https://raw.githubusercontent.com/remla25-team1/lib-version/refs/heads/anna/dist/lib_version-0.1.1-py3-none-any.whl
