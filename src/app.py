@@ -4,6 +4,7 @@ from swagger_template import generate_swagger_doc
 from versionutil import VersionUtil
 import requests
 import os
+import json
 
 app = Flask(__name__, static_folder="static", template_folder="template")
 swagger = Swagger(app) 
@@ -37,6 +38,34 @@ def sentiment():
     except requests.RequestException as e:
         return jsonify({"error": "model-service unreachable", "details": str(e)}), 502
 
+
+@app.route("/correction", methods = ["POST"])
+@swag_from(generate_swagger_doc(
+    summary= "Collect the correction from users.",
+    request_example= {"tweet": "Hello World!",
+                      "prediction": "negative",
+                      "correction": "positive",},
+    response_example={"status": "received"},                  
+    required_fields=["tweet", "prediction", "correction"]
+                    ))
+def collect_corrections():
+    data = request.get_json()
+    tweet = data.get("tweet")
+    prediction = data.get("prediction")
+    correction = data.get("correction")
+
+    if not all([tweet, prediction, correction]):
+        return jsonify({"error": "Missing fields"}), 400
+
+    record = {
+        "tweet": tweet,
+        "prediction": prediction,
+        "correction": correction,
+    }
+    with open("corrections.jsonl", "a") as f:
+        f.write(json.dumps(record) + "\n")
+
+    return "", 200
 
     
 

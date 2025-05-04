@@ -34,3 +34,30 @@ body {
     font-weight: bold;
   }
   
+  .hidden {
+    display: none;
+  }
+  
+  .feedback-section {
+    margin-top: 20px;
+  }
+  
+  .correction {
+    margin-top: 10px;
+  }
+  
+  .feedback-message {
+    margin-top: 10px;
+    font-style: italic;
+  }
+  .correction-message {
+    margin-top: 10px;
+    font-style: italic;
+  }
+  
+  .correction-btn {
+    margin: 5px;
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+  
