@@ -67,19 +67,26 @@ def collect_corrections():
 
     return "", 200
 
+
+def get_ml_version():
+    res = requests.get(f"{MODEL_SERVICE_URL}/version")
+    return res.json().get("version", "unknown")
     
 
 #Get version
 @app.route("/version", methods=["GET"])
 @swag_from(generate_swagger_doc(
-    summary= "Get current version of the app.",
-    response_example={"app_version": "v0.1.0"},
+    summary= "Get current version of the app and machine learning model.",
+    response_example={"app_version": "v0.1.0",
+                      "ml_version" : "v0.1.0"},
     has_body=False
 ))
 def version():
-    version = VersionUtil.get_version()
+    app_version = VersionUtil.get_version()
+    ml_version = get_ml_version()
     return jsonify({
-        "app_version": version
+        "app_version": app_version,
+        "ml_version" : ml_version
     })
 
 if __name__ == "__main__":

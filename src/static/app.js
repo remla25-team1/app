@@ -38,7 +38,7 @@ async function analyze() {
       const res = await fetch("/version");
       if (!res.ok) throw new Error("Failed to fetch version");
       const data = await res.json();
-      versionDiv.textContent = `Version: ${data.app_version}`;
+      versionDiv.textContent = `App Version: ${data.app_version}, \n ML model Version ${data.ml_version}`;
     } catch (err) {
       versionDiv.textContent = "Version: unknown";
     }
