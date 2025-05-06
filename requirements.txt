@@ -3,8 +3,9 @@ flasgger==0.9.7.1
 requests
 flask-cors
 
-#TODO：fix dependecy when lib is done
-git+https://github.com/remla25-team1/lib-version.git@anna#egg=lib-version
+
+git+https://github.com/remla25-team1/lib-version.git#egg=lib-version
+
 #https://github.com/remla25-team1/lib-version/dist/lib_version-0.1.1-py3-none-any.whl
 
 # source distribution
