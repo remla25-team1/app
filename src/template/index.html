@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tweet Sentiment Analyzer</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <h1>Tweet Sentiment Analyzer</h1>
+
+  <label for="tweet">Enter tweet text:</label><br/>
+  <textarea id="tweet" placeholder="paste tweet here..."></textarea><br/>
+
+  <button onclick="analyze()">Analyze</button>
+
+  <div id="result"></div>
+
+  <div id="feedback" class="feedback-section hidden">
+    <div id="feedback-buttons">
+      <p>Was this prediction correct?</p>
+      <button class="correction-btn" onclick="sendFeedback(true)">Yes</button>
+      <button class="correction-btn" onclick="showCorrection()"> No</button>
+    </div>
+    <div id="feedback-msg" class="feedback-msg"></div>
+
+    <div id="correction-area" class="correction hidden">
+      <div id="correction-buttons">
+        <p>Please select the correct sentiment:</p>
+        <button class="correction-btn" onclick="submitCorrection('positive')">👍 Positive</button>
+        <button class="correction-btn" onclick="submitCorrection('negative')">👎 Negative</button>
+        <button class="correction-btn" onclick="submitCorrection('neutral')">😐 Neutral</button>
+      </div>
+    </div>
+    <div id="correction-msg" class="correction-msg"></div>
+  </div>
+  
+  <footer>
+    <div id="version">Version: .</div>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
