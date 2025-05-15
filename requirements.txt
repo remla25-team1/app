@@ -2,7 +2,5 @@ Flask==2.3.3
 flasgger==0.9.7.1
 requests
 flask-cors
+lib_version @ https://github.com/remla25-team1/lib-version/releases/download/v0.1.4/lib_version-0.1.4-py3-none-any.whl
 
-https://github.com/remla25-team1/lib-version/releases/download/v0.1.4/lib_version-0.1.4-py3-none-any.whl
-# source distribution
-#https://github.com/remla25-team1/lib-version/dist/lib_version-0.1.1.tar.gz

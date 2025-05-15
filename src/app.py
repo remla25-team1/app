@@ -8,9 +8,12 @@ import json
 
 app = Flask(__name__, static_folder="static", template_folder="template")
 swagger = Swagger(app) 
-
-MODEL_SERVICE_URL = os.getenv("MODEL_SERVICE_URL", "http://localhost:8080")
-
+APP_VERSION = os.environ.get("APP_VERSION", "0.0.0")
+PORT = int(os.environ.get("PORT", 8080))
+MODEL_SERVICE_HOST = os.getenv("MODEL_SERVICE_HOST", "localhost")
+#MODEL_SERVICE_PORT = os.getenv("MODEL_SERVICE_PORT")
+MODEL_SERVICE_URL = f"http://{MODEL_SERVICE_HOST}:{PORT}"
+MODEL_SERVICE_VERSION = os.environ.get("MODEL_SERVICE_VERSION", "0.0.0")
 
 @app.route("/")
 def serve_index():
@@ -36,7 +39,7 @@ def sentiment():
         label = "positive" if pred == 1 else "negative"
         return jsonify({"tweet": tweet, "result": label})
     except requests.RequestException as e:
-        return jsonify({"error": "model-service unreachable", "details": str(e)}), 502
+        return jsonify({"error": "model-service unreachable", "details": str(e), "model_service: ": MODEL_SERVICE_URL }), 502
 
 
 @app.route("/correction", methods = ["POST"])
@@ -77,17 +80,18 @@ def get_ml_version():
 @app.route("/version", methods=["GET"])
 @swag_from(generate_swagger_doc(
     summary= "Get current version of the app and machine learning model.",
-    response_example={"app_version": "v0.1.0",
-                      "ml_version" : "v0.1.0"},
+    response_example={"lib_version": "v0.1.0",
+                      "app_version": "v0.1.0",
+                      "ml_version" : "v0.1.0",},
     has_body=False
 ))
 def version():
-    app_version = VersionUtil.get_version()
-    ml_version = get_ml_version()
+    lib_version = VersionUtil.get_version()
     return jsonify({
-        "app_version": app_version,
-        "ml_version" : ml_version
+        "lib_version": lib_version,
+        "app_version": APP_VERSION,
+        "model_version" : MODEL_SERVICE_VERSION
     })
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=PORT)
