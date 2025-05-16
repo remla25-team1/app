@@ -28,6 +28,31 @@ def serve_index():
     required_fields=["tweet"]
 ))
 def sentiment():
+    """
+    Analyze sentiment of a tweet.
+    ---
+    tags:
+      - Sentiment
+    summary: Analyze sentiment of a tweet
+    description: Returns the sentiment (positive/negative) of the given tweet using the model-service.
+    consumes:
+      - application/json
+    parameters:
+      - name: input_data
+        in: body
+        description: tweet to be classified.
+        required: True
+        schema:
+          type: object
+          required: tweet
+          properties:
+            tweet:
+              type: string
+              example: Hello World!
+    responses:
+      200:
+        description: The result of the classification: 'positive' or 'negative'.
+    """
     data = request.get_json()
     tweet = data.get("tweet")
     if not tweet:
@@ -52,6 +77,40 @@ def sentiment():
     required_fields=["tweet", "prediction", "correction"]
                     ))
 def collect_corrections():
+    """
+    Collect the correction from users.
+    ---
+    tags:
+      - Correction
+    summary: Collect the correction from users.
+    description: Collects user feedback on prediction corrections.
+    consumes:
+      - application/json
+    parameters:
+      - name: input_data
+        in: body
+        description: Correction data from user.
+        required: True
+        schema:
+          type: object
+          required:
+            - tweet
+            - prediction
+            - correction
+          properties:
+            tweet:
+              type: string
+              example: Hello World!
+            prediction:
+              type: string
+              example: negative
+            correction:
+              type: string
+              example: positive
+    responses:
+      200:
+        description: Correction received successfully.
+    """
     data = request.get_json()
     tweet = data.get("tweet")
     prediction = data.get("prediction")
@@ -86,6 +145,23 @@ def get_ml_version():
     has_body=False
 ))
 def version():
+    """
+    Get current version of the app and machine learning model.
+    ---
+    tags:
+      - Version
+    summary: Get current version of the app and machine learning model.
+    description: Returns the version information for the app, library, and model-service.
+    responses:
+      200:
+        description: Version info retrieved successfully
+        content:
+          application/json:
+            example:
+              lib_version: v0.1.0
+              app_version: v0.1.0
+              ml_version: v0.1.0
+    """
     lib_version = VersionUtil.get_version()
     return jsonify({
         "lib_version": lib_version,
