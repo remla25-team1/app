@@ -46,15 +46,21 @@ jobs:
           NEXT_VERSION="$MAJOR.$MINOR.$PATCH-pre"
           echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Bump to next release version on main
+      - name: Bump to latest release version on main
         run: |
-          echo "${{ steps.get_version.outputs.release_version }}" > VERSION.txt
-          if ! git diff --quiet VERSION.txt; then
+          CUR_VERSION=$(cat VERSION.txt)
+          LATEST_TAG=$(git tag --list 'v*.*.*' --sort=-v:refname | grep -v -- '-pre' | head -n1)
+          if [[ -z "$LATEST_TAG" ]]; then
+            LATEST_TAG="v0.0.0"
+          fi
+          VERSION=${LATEST_TAG#v}
+          if [ "$VERSION" != "$CUR_VERSION" ]; then
+            echo "$VERSION" > VERSION.txt
             git add VERSION.txt
-            git commit -m "chore: bump version to ${{ steps.get_version.outputs.release_version }} after release"
+            git commit -m "chore: sync VERSION.txt to latest release $VERSION"
             git push
           else
-            echo "No version bump needed, VERSION.txt is already up to date."
+            echo "No version bump needed, VERSION.txt is already at latest release."
           fi
 
   auto-patch-release:
