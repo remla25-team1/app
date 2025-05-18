@@ -1,44 +1,36 @@
-#multi-stage
+# Build stage
 FROM python:3.12.9-slim AS builder
 
+WORKDIR /app
+
+# Install git  
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git && \
     rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-
+# Install dependencies 
 COPY requirements.txt .
 RUN python -m pip install --upgrade pip && \
     pip install --user -r requirements.txt
 
-COPY src src
-
-
+# Runtime stage
 FROM python:3.12.9-slim
 
-WORKDIR /root/
-
-COPY --from=builder /root/.local /root/.local
-COPY --from=builder /app/src src
-
-
-ARG APP_VERSION=0.0.0
-ARG MODEL_SERVICE_VERSION=0.0.0
-
-ENV PATH=/root/.local/bin:$PATH
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    MODEL_SERVICE_HOST=model-service \
-	MODEL_SERVICE_PORT=8081\
-    PORT=8080
-
-ARG APP_VERSION=0.0.0
-ARG MODEL_SERVICE_VERSION=0.0.0
-ENV APP_VERSION=${APP_VERSION}
-ENV MODEL_SERVICE_VERSION=${MODEL_SERVICE_VERSION}
-
+WORKDIR /root
 
 COPY src src
+
+COPY --from=builder /root/.local /root/.local
+
+ENV PATH=/root/.local/bin:$PATH \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    MODEL_SERVICE_HOST=model-service \
+	MODEL_SERVICE_PORT=8081 \
+    MODEL_SERVICE_VERSION=0.0.0 \
+    APP_VERSION=0.0.0 \
+    PORT=8080
+
 EXPOSE ${PORT}
 
 ENTRYPOINT ["python"]
