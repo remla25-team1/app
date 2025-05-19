@@ -3,6 +3,7 @@ from flasgger import Swagger,swag_from
 from swagger_template import generate_swagger_doc
 from versionutil import VersionUtil
 from prometheus_flask_exporter import PrometheusMetrics
+from prometheus_client import Counter, Gauge, Histogram
 import requests
 import os
 import json
