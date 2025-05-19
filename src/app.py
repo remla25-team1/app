@@ -33,7 +33,7 @@ in_progress_gauge = Gauge(
 
 sentiment_response_time_hist = Histogram(
     'sentiment_response_time_seconds', 
-    'Histogram of /sentiment response time'
+    'Histogram of /sentiment response time',
     ['model_version'],
     buckets=[0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0]
 
