@@ -1,9 +1,9 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, Response
 from flasgger import Swagger,swag_from
 from swagger_template import generate_swagger_doc
 from versionutil import VersionUtil
 from prometheus_flask_exporter import PrometheusMetrics
-from prometheus_client import Counter, Gauge, Histogram
+from prometheus_client import Counter, Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import requests
 import os
 import json
@@ -17,8 +17,14 @@ MODEL_SERVICE_PORT = os.getenv("MODEL_SERVICE_PORT", 8081)
 MODEL_SERVICE_URL = f"http://{MODEL_SERVICE_HOST}:{MODEL_SERVICE_PORT}"
 MODEL_SERVICE_VERSION = os.environ.get("MODEL_SERVICE_VERSION", "0.0.0")
 
-metrics = PrometheusMetrics(app, path='/metrics')
+metrics = PrometheusMetrics(app, path=None)
 metrics.info('app_info', 'app info', version=APP_VERSION, model_version=MODEL_SERVICE_VERSION)
+
+@app.route("/metrics")
+def metrics_endpoint():
+    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
+
 sentiment_prediction_counter = Counter(
     'sentiment_requests_total', 
     'Total number of sentiment prediction',
