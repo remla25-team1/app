@@ -34,13 +34,14 @@ jobs:
         echo "version_major=$MAJOR" >> $GITHUB_ENV
         echo "version_minor=$MINOR" >> $GITHUB_ENV
         echo "version_patch=$PATCH" >> $GITHUB_ENV
-
     - name: Build and push multi-arch image
       uses: docker/build-push-action@v5
       with:
         context: .
         push: true
         platforms: linux/amd64,linux/arm64
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
         tags: |
           ghcr.io/${{ github.repository }}:${{ env.version }}
           ghcr.io/${{ github.repository }}:${{ env.version_major }}.${{ env.version_minor }}.latest

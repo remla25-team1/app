@@ -3,4 +3,5 @@ flasgger==0.9.7.1
 requests
 flask-cors
 lib_version @ https://github.com/remla25-team1/lib-version/releases/download/v0.1.4/lib_version-0.1.4-py3-none-any.whl
-
+prometheus_flask_exporter
+prometheus-client
