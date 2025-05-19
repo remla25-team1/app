@@ -110,7 +110,7 @@ def collect_corrections():
         "prediction": prediction,
         "correction": correction,
     }
-    correction_request_counter(correction = correction, prediction = prediction).inc()
+    correction_request_counter.labels(correction = correction, prediction = prediction).inc()
     with open("corrections.jsonl", "a") as f:
         f.write(json.dumps(record) + "\n")
 
