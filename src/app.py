@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flasgger import Swagger,swag_from
 from swagger_template import generate_swagger_doc
 from versionutil import VersionUtil
+from prometheus_flask_exporter import PrometheusMetrics
 import requests
 import os
 import json
@@ -15,6 +16,36 @@ MODEL_SERVICE_PORT = os.getenv("MODEL_SERVICE_PORT", 8081)
 MODEL_SERVICE_URL = f"http://{MODEL_SERVICE_HOST}:{MODEL_SERVICE_PORT}"
 MODEL_SERVICE_VERSION = os.environ.get("MODEL_SERVICE_VERSION", "0.0.0")
 
+metrics = PrometheusMetrics(app, path='/metrics')
+metrics.info('app_info', 'app info', version=APP_VERSION, model_version=MODEL_SERVICE_VERSION)
+sentiment_prediction_counter = Counter(
+    'sentiment_requests_total', 
+    'Total number of sentiment prediction',
+    ['prediction']
+)
+
+in_progress_gauge = Gauge(
+    'sentiment_requests_in_progress', 
+    'Number of /sentiment requests in progress',
+    ['model_version']
+)
+
+sentiment_response_time_hist = Histogram(
+    'sentiment_response_time_seconds', 
+    'Histogram of /sentiment response time'
+    ['model_version'],
+    buckets=[0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0]
+
+)
+
+correction_request_counter = Counter(
+    'correction_requests_total', 
+    'Total number of /correction requests',
+    ['correction', 'prediction']
+)
+
+
+
 @app.route("/")
 def serve_index():
     return send_from_directory(app.template_folder, "index.html")
@@ -27,19 +58,26 @@ def serve_index():
     response_example= {"result": "positive"},
     required_fields=["tweet"]
 ))
+
 def sentiment():
     data = request.get_json()
     tweet = data.get("tweet")
     if not tweet:
         return jsonify({"error": "Missing tweet field"}), 400
-    try:
-        res = requests.post(f"{MODEL_SERVICE_URL}/predict", json={"tweet": tweet}, timeout=3)
-        res.raise_for_status()
-        pred = res.json().get("result")
-        label = "positive" if pred == 1 else "negative"
-        return jsonify({"tweet": tweet, "result": label})
-    except requests.RequestException as e:
-        return jsonify({"error": "model-service unreachable", "details": str(e), "model_service: ": MODEL_SERVICE_URL }), 502
+    model_version = MODEL_SERVICE_VERSION
+    label = "unknown"
+    with in_progress_gauge.labels(model_version=model_version).track_inprogress():
+        with sentiment_response_time_hist.labels(model_version=model_version).time():
+            try:
+                res = requests.post(f"{MODEL_SERVICE_URL}/predict", json={"tweet": tweet}, timeout=3)
+                res.raise_for_status()
+                pred = res.json().get("result")
+                label = "positive" if pred == 1 else "negative"
+                label.labels(prediction=label).inc()
+                return jsonify({"tweet": tweet, "result": label})
+            except requests.RequestException as e:
+                return jsonify({"error": "model-service unreachable", "details": str(e), "model_service_url": MODEL_SERVICE_URL }), 502
+
 
 
 @app.route("/correction", methods = ["POST"])
@@ -65,6 +103,7 @@ def collect_corrections():
         "prediction": prediction,
         "correction": correction,
     }
+    correction_request_counter(correction = correction, prediction = prediction).inc()
     with open("corrections.jsonl", "a") as f:
         f.write(json.dumps(record) + "\n")
 
