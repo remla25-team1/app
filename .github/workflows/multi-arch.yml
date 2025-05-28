@@ -1,10 +1,10 @@
-name: Release
+name: Mulit-arch Release
 on: 
   workflow_dispatch:
   push:
     tags: 
       - "v*.*.*"
-      - "v*.*.*-pre*"
+      - "v*.*.*-pre*-*"
 permissions:
   contents: write
   packages: write
