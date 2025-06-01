@@ -7,6 +7,7 @@ from prometheus_client import Counter, Gauge, Histogram, generate_latest, CONTEN
 import requests
 import os
 import json
+import redis
 
 app = Flask(__name__, static_folder="static", template_folder="template")
 swagger = Swagger(app) 
@@ -16,6 +17,13 @@ MODEL_SERVICE_HOST = os.getenv("MODEL_SERVICE_HOST", "localhost")
 MODEL_SERVICE_PORT = os.getenv("MODEL_SERVICE_PORT", "8081")
 MODEL_SERVICE_URL = f"http://{MODEL_SERVICE_HOST}:{MODEL_SERVICE_PORT}"
 MODEL_SERVICE_VERSION = os.environ.get("MODEL_SERVICE_VERSION", "0.0.0")
+
+# Initialize Redis client
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+REDIS_DB = int(os.getenv("REDIS_DB", 0))
+CACHE_TTL = int(os.getenv("CACHE_TTL", 3600)) 
+rds = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
 
 metrics = PrometheusMetrics(app, path=None)
 metrics.info('app_info', 'app info', version=APP_VERSION, model_version=MODEL_SERVICE_VERSION)
@@ -38,11 +46,16 @@ in_progress_gauge = Gauge(
 )
 
 sentiment_response_time_hist = Histogram(
-    'sentiment_response_time_seconds', 
-    'Histogram of /sentiment response time',
-    ['model_version'],
+    'sentiment_response_time_seconds',
+    'Response time of /sentiment route',
+    ['model_version', 'source'], 
     buckets=[0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0]
+)
 
+sentiment_source_counter = Counter(
+    'sentiment_source_total',
+    'Count of /sentiment requests served from cache vs model',
+    ['source', 'model_version']
 )
 
 correction_request_counter = Counter(
@@ -98,14 +111,23 @@ def sentiment():
         return jsonify({"error": "Missing tweet field"}), 400
     model_version = MODEL_SERVICE_VERSION
     label = "unknown"
+    cached_result = rds.get(tweet)
+    if cached_result:
+        with sentiment_response_time_hist.labels(model_version=model_version, source="cache").time():
+          label = cached_result.decode("utf-8")
+          sentiment_source_counter.labels(source="cache", model_version=model_version).inc()
+          sentiment_prediction_counter.labels(prediction=label).inc()
+          return jsonify({"tweet": tweet, "result": label})
     with in_progress_gauge.labels(model_version=model_version).track_inprogress():
-        with sentiment_response_time_hist.labels(model_version=model_version).time():
+        with sentiment_response_time_hist.labels(model_version=model_version, source="model").time():
             try:
                 res = requests.post(f"{MODEL_SERVICE_URL}/predict", json={"tweet": tweet}, timeout=3)
                 res.raise_for_status()
                 pred = res.json().get("result")
                 label = "positive" if pred == 1 else "negative"
+                rds.setex(tweet, CACHE_TTL, label)
                 sentiment_prediction_counter.labels(prediction=label).inc()
+                sentiment_source_counter.labels(source="model", model_version=model_version).inc()
                 return jsonify({"tweet": tweet, "result": label})
             except requests.RequestException as e:
                 return jsonify({"error": "model-service unreachable", "details": str(e), "model_service_url": MODEL_SERVICE_URL }), 502
