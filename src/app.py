@@ -11,11 +11,15 @@ APP_VERSION = os.environ.get("APP_VERSION", "0.0.0")
 PORT = int(os.environ.get("PORT", 8080))
 MODEL_SERVICE_HOST = os.getenv("MODEL_SERVICE_HOST", "localhost")
 MODEL_SERVICE_PORT = os.getenv("MODEL_SERVICE_PORT", "8081")
-MODEL_SERVICE_URL = f"http://{MODEL_SERVICE_HOST}:{MODEL_SERVICE_PORT}"
+MODEL_SERVICE_URL = f"http://{MODEL_SERVICE_HOST}:{PORT}"
 
 
+# Get model service version
 def get_ml_version():
-    res = requests.get(f"{MODEL_SERVICE_URL}/version")
+    """
+    Retrieve the version of the model service by making a GET request to its /version endpoint.
+    """
+    res = requests.get(f"{MODEL_SERVICE_URL}/version", timeout=3)
     return res.json().get("version", "unknown")
 
 model_service_version = get_ml_version()
@@ -25,6 +29,33 @@ metrics.info('app_info', 'app info', version=APP_VERSION, model_version=model_se
 
 @app.route("/metrics")
 def metrics_endpoint():
+    """
+    Exposes Prometheus metrics for monitoring.
+    ---
+    tags:
+      - Metrics
+    summary: Expose Prometheus metrics
+    description: Returns the metrics in a format that Prometheus can scrape.
+    responses:
+      200:
+        description: Prometheus metrics in text format.
+        content:
+          text/plain:
+            schema:
+              type: string
+              example: |
+                # HELP app_info app info
+                # TYPE app_info gauge
+                app_info{version="0.1.0",model_version="1.0.0"} 1.0
+                # HELP sentiment_requests_total Total number of sentiment prediction
+                # TYPE sentiment_requests_total counter
+                sentiment_requests_total{prediction="positive"} 100
+                sentiment_requests_total{prediction="negative"} 50
+                # HELP sentiment_requests_in_progress Number of /sentiment requests in progress
+                # TYPE sentiment_requests_in_progress gauge
+                sentiment_requests_in_progress{model_version="1.0.0",app_version="0.1.0"} 5
+                sentiment_requests_in_progress{model_version="1.0.0",app_version="0.1.0"} 3
+    """
     return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 
@@ -63,6 +94,21 @@ correction_request_counter = Counter(
 
 @app.route("/")
 def serve_index():
+    """ 
+    Serve the index.html file.
+    ---
+    tags:      - Index
+    summary: Serve the index.html file
+    description: Returns the index.html file from the template folder.
+    responses:
+      200:
+        description: The index.html file.
+        content:
+          text/html:
+            schema:
+              type: string
+              example: "<!DOCTYPE html> <html>...</html>"
+    """
     return send_from_directory(app.template_folder, "index.html")
 
 # Analyze tweets sentiment
@@ -97,10 +143,9 @@ def sentiment():
     tweet = data.get("tweet")
     if not tweet:
         return jsonify({"error": "Missing tweet field"}), 400
-    model_version = model_service_version
     label = "unknown"
-    with in_progress_gauge.labels(model_version=model_version, app_version=APP_VERSION).track_inprogress():
-        with sentiment_response_time_hist.labels(model_version=model_version, app_version=APP_VERSION).time():
+    with in_progress_gauge.labels(model_version=model_service_version, app_version=APP_VERSION).track_inprogress():
+        with sentiment_response_time_hist.labels(model_version=model_service_version, app_version=APP_VERSION, source="model").time():
             try:
                 res = requests.post(f"{MODEL_SERVICE_URL}/predict", json={"tweet": tweet}, timeout=3)
                 res.raise_for_status()
