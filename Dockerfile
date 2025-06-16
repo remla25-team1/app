@@ -22,6 +22,8 @@ COPY src src
 
 COPY --from=builder /root/.local /root/.local
 
+ARG APP_VERSION=unknown
+
 ENV REDIS_HOST=redis \
     REDIS_PORT=6379 \
     REDIS_DB=0 \
@@ -32,7 +34,7 @@ ENV REDIS_HOST=redis \
     MODEL_SERVICE_HOST=model-service \
 	MODEL_SERVICE_PORT=8081 \
     MODEL_SERVICE_VERSION=0.0.0 \
-    APP_VERSION=0.0.0 \
+    APP_VERSION=${APP_VERSION} \
     PORT=8080
 
 EXPOSE ${PORT}
