@@ -1,6 +1,4 @@
 from flask import Flask, jsonify, request, send_from_directory, Response
-from flasgger import Swagger,swag_from
-from swagger_template import generate_swagger_doc
 from versionutil import VersionUtil
 from prometheus_flask_exporter import PrometheusMetrics
 from prometheus_client import Counter, Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST
@@ -9,16 +7,21 @@ import os
 import json
 
 app = Flask(__name__, static_folder="static", template_folder="template")
-swagger = Swagger(app) 
 APP_VERSION = os.environ.get("APP_VERSION", "0.0.0")
 PORT = int(os.environ.get("PORT", 8080))
 MODEL_SERVICE_HOST = os.getenv("MODEL_SERVICE_HOST", "localhost")
 MODEL_SERVICE_PORT = os.getenv("MODEL_SERVICE_PORT", "8081")
 MODEL_SERVICE_URL = f"http://{MODEL_SERVICE_HOST}:{MODEL_SERVICE_PORT}"
-MODEL_SERVICE_VERSION = os.environ.get("MODEL_SERVICE_VERSION", "0.0.0")
+
+
+def get_ml_version():
+    res = requests.get(f"{MODEL_SERVICE_URL}/version")
+    return res.json().get("version", "unknown")
+
+model_service_version = get_ml_version()
 
 metrics = PrometheusMetrics(app, path=None)
-metrics.info('app_info', 'app info', version=APP_VERSION, model_version=MODEL_SERVICE_VERSION)
+metrics.info('app_info', 'app info', version=APP_VERSION, model_version=model_service_version)
 
 @app.route("/metrics")
 def metrics_endpoint():
@@ -34,21 +37,26 @@ sentiment_prediction_counter = Counter(
 in_progress_gauge = Gauge(
     'sentiment_requests_in_progress', 
     'Number of /sentiment requests in progress',
-    ['model_version']
+    ['model_version', 'app_version']
 )
 
 sentiment_response_time_hist = Histogram(
     'sentiment_response_time_seconds', 
     'Histogram of /sentiment response time',
-    ['model_version'],
+    ['model_version','source', 'app_version'],
     buckets=[0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0]
+)
 
+sentiment_source_counter = Counter(
+    'sentiment_source_total',
+    'Count of /sentiment requests served from cache vs model',
+    ['source', 'app_version']
 )
 
 correction_request_counter = Counter(
     'correction_requests_total', 
     'Total number of /correction requests',
-    ['correction', 'prediction']
+    ['correction', 'prediction','model_version', 'app_version']
 )
 
 
@@ -59,13 +67,6 @@ def serve_index():
 
 # Analyze tweets sentiment
 @app.route("/sentiment", methods = ["POST"])
-@swag_from(generate_swagger_doc(
-    summary="Analyze sentiment of a tweet",
-    request_example= {"tweet": "Hello World!"},
-    response_example= {"result": "positive"},
-    required_fields=["tweet"]
-))
-
 def sentiment():
     """
     Analyze sentiment of a tweet.
@@ -96,10 +97,10 @@ def sentiment():
     tweet = data.get("tweet")
     if not tweet:
         return jsonify({"error": "Missing tweet field"}), 400
-    model_version = MODEL_SERVICE_VERSION
+    model_version = model_service_version
     label = "unknown"
-    with in_progress_gauge.labels(model_version=model_version).track_inprogress():
-        with sentiment_response_time_hist.labels(model_version=model_version).time():
+    with in_progress_gauge.labels(model_version=model_version, app_version=APP_VERSION).track_inprogress():
+        with sentiment_response_time_hist.labels(model_version=model_version, app_version=APP_VERSION).time():
             try:
                 res = requests.post(f"{MODEL_SERVICE_URL}/predict", json={"tweet": tweet}, timeout=3)
                 res.raise_for_status()
@@ -113,14 +114,6 @@ def sentiment():
 
 
 @app.route("/correction", methods = ["POST"])
-@swag_from(generate_swagger_doc(
-    summary= "Collect the correction from users.",
-    request_example= {"tweet": "Hello World!",
-                      "prediction": "negative",
-                      "correction": "positive",},
-    response_example={"status": "received"},                  
-    required_fields=["tweet", "prediction", "correction"]
-                    ))
 def collect_corrections():
     """
     Collect the correction from users.
@@ -169,27 +162,15 @@ def collect_corrections():
         "prediction": prediction,
         "correction": correction,
     }
-    correction_request_counter.labels(correction = correction, prediction = prediction).inc()
-    with open("corrections.jsonl", "a") as f:
+    correction_request_counter.labels(correction = correction, prediction = prediction, app_version = APP_VERSION, model_version = model_service_version).inc()
+    with open("corrections.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(record) + "\n")
 
     return "", 200
-
-
-def get_ml_version():
-    res = requests.get(f"{MODEL_SERVICE_URL}/version")
-    return res.json().get("version", "unknown")
     
 
 #Get version
 @app.route("/version", methods=["GET"])
-@swag_from(generate_swagger_doc(
-    summary= "Get current version of the app and machine learning model.",
-    response_example={"lib_version": "v0.1.0",
-                      "app_version": "v0.1.0",
-                      "ml_version" : "v0.1.0",},
-    has_body=False
-))
 def version():
     """
     Get current version of the app and machine learning model.
@@ -212,7 +193,7 @@ def version():
     return jsonify({
         "lib_version": lib_version,
         "app_version": APP_VERSION,
-        "model_version" : MODEL_SERVICE_VERSION
+        "model_version" : model_service_version
     })
 
 if __name__ == "__main__":
