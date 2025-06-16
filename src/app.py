@@ -11,7 +11,7 @@ APP_VERSION = os.environ.get("APP_VERSION", "0.0.0")
 PORT = int(os.environ.get("PORT", 8080))
 MODEL_SERVICE_HOST = os.getenv("MODEL_SERVICE_HOST", "localhost")
 MODEL_SERVICE_PORT = os.getenv("MODEL_SERVICE_PORT", "8081")
-MODEL_SERVICE_URL = f"http://{MODEL_SERVICE_HOST}:{PORT}"
+MODEL_SERVICE_URL = f"http://{MODEL_SERVICE_HOST}:{MODEL_SERVICE_PORT}"
 
 
 # Get model service version
