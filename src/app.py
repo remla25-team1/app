@@ -44,7 +44,7 @@ def metrics_endpoint():
 sentiment_prediction_counter = Counter(
     'sentiment_requests_total', 
     'Total number of sentiment prediction',
-    ['prediction']
+    ['prediction', 'app_version','source']
 )
 
 in_progress_gauge = Gauge(
@@ -60,11 +60,6 @@ sentiment_response_time_hist = Histogram(
     buckets=[0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0]
 )
 
-sentiment_source_counter = Counter(
-    'sentiment_source_total',
-    'Count of /sentiment requests served from cache vs model',
-    ['source', 'app_version']
-)
 
 correction_request_counter = Counter(
     'correction_requests_total', 
@@ -116,8 +111,7 @@ def sentiment():
     if cached_result:
         with sentiment_response_time_hist.labels(model_version = model_version, app_version=APP_VERSION, source="cache").time():
           label = cached_result.decode("utf-8")
-          sentiment_source_counter.labels(source="cache", app_version = APP_VERSION).inc()
-          sentiment_prediction_counter.labels(prediction=label).inc()
+          sentiment_prediction_counter.labels(prediction=label, app_version=APP_VERSION, souce = "cache").inc()
           return jsonify({"tweet": tweet, "result": label})
     with in_progress_gauge.labels(model_version=model_version, app_version = APP_VERSION).track_inprogress():
         with sentiment_response_time_hist.labels(model_version = model_version, app_version=APP_VERSION, source="model").time():
@@ -127,8 +121,7 @@ def sentiment():
                 pred = res.json().get("result")
                 label = "positive" if pred == 1 else "negative"
                 rds.setex(tweet, CACHE_TTL, label)
-                sentiment_prediction_counter.labels(prediction=label).inc()
-                sentiment_source_counter.labels(source="model", app_version = APP_VERSION).inc()
+                sentiment_prediction_counter.labels(prediction=label,app_version=APP_VERSION, source="model").inc()
                 return jsonify({"tweet": tweet, "result": label})
             except requests.RequestException as e:
                 return jsonify({"error": "model-service unreachable", "details": str(e), "model_service_url": MODEL_SERVICE_URL }), 502
