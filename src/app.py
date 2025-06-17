@@ -111,7 +111,7 @@ def sentiment():
     if cached_result:
         with sentiment_response_time_hist.labels(model_version = model_version, app_version=APP_VERSION, source="cache").time():
           label = cached_result.decode("utf-8")
-          sentiment_prediction_counter.labels(prediction=label, app_version=APP_VERSION, souce = "cache").inc()
+          sentiment_prediction_counter.labels(prediction=label, app_version=APP_VERSION, source = "cache").inc()
           return jsonify({"tweet": tweet, "result": label})
     with in_progress_gauge.labels(model_version=model_version, app_version = APP_VERSION).track_inprogress():
         with sentiment_response_time_hist.labels(model_version = model_version, app_version=APP_VERSION, source="model").time():
