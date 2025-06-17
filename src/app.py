@@ -62,7 +62,7 @@ def metrics_endpoint():
 sentiment_prediction_counter = Counter(
     'sentiment_requests_total', 
     'Total number of sentiment prediction',
-    ['prediction']
+    ['prediction', "app_version"]
 )
 
 in_progress_gauge = Gauge(
@@ -151,7 +151,7 @@ def sentiment():
                 res.raise_for_status()
                 pred = res.json().get("result")
                 label = "positive" if pred == 1 else "negative"
-                sentiment_prediction_counter.labels(prediction=label).inc()
+                sentiment_prediction_counter.labels(prediction=label, app_version = APP_VERSION).inc()
                 return jsonify({"tweet": tweet, "result": label})
             except requests.RequestException as e:
                 return jsonify({"error": "model-service unreachable", "details": str(e), "model_service_url": MODEL_SERVICE_URL }), 502
