@@ -20,7 +20,7 @@ MODEL_SERVICE_URL = f"http://{MODEL_SERVICE_HOST}:{MODEL_SERVICE_PORT}"
 
 # Get model service version
 def get_ml_version():
-    res = requests.get(f"{MODEL_SERVICE_URL}/version", timeout=3)
+    res = requests.get(f"{MODEL_SERVICE_URL}/version")
     return res.json().get("version", "unknown")
 
 model_version = get_ml_version()
