@@ -19,7 +19,7 @@ def get_ml_version():
     """
     Retrieve the version of the model service by making a GET request to its /version endpoint.
     """
-    res = requests.get(f"{MODEL_SERVICE_URL}/version", timeout=3)
+    res = requests.get(f"{MODEL_SERVICE_URL}/version")
     return res.json().get("version", "unknown")
 
 model_service_version = get_ml_version()
