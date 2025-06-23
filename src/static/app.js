@@ -38,7 +38,7 @@ async function analyze() {
       const res = await fetch("/version");
       if (!res.ok) throw new Error("Failed to fetch version");
       const data = await res.json();
-      versionDiv.textContent = `Lib Version: ${data.lib_version}, \n App Version: ${data.app_version}, \n model Version ${data.model_version}`;
+      versionDiv.textContent = `Lib Version: ${data.lib_version}, \n App Version: ${data.app_version}, \n Model Version ${data.model_version}`;
     } catch (err) {
       versionDiv.textContent = "Version: unknown";
     }
@@ -52,6 +52,23 @@ async function analyze() {
   function showCorrection() {
     document.getElementById("correction-area").classList.remove("hidden");
     document.getElementById("feedback-msg").textContent = "";
+
+    const { prediction } = window._latestFeedback || {};
+    const buttons = {
+      positive: document.getElementById("btn-positive"),
+      negative: document.getElementById("btn-negative"),
+      neutral: document.getElementById("btn-neutral")
+    };
+
+    for (let key in buttons) {
+      buttons[key].disabled = false;
+      buttons[key].classList.remove("disabled");
+    }
+
+    if (prediction && buttons[prediction]) {
+      buttons[prediction].disabled = true;
+      buttons[prediction].classList.add("disabled");
+    }
   }
   
   function hideCorrection() {
@@ -66,6 +83,7 @@ async function analyze() {
     }else{
       hideFeedbackButtons();
       correctionMsg.textContent = "Thank you for your feedback!"
+      setTimeout(() => location.reload(), 1000);
     }
   }
 
@@ -107,6 +125,7 @@ async function analyze() {
       }else{
       hideCorrectionButtons();
       correctionMsg.textContent = "Thank you for your correction!";
+      setTimeout(() => location.reload(), 1000);
       }
     } catch (err) {
       correctionMsg.textContent = "Error: " + err.message;
