@@ -5,7 +5,7 @@ This is a web application for sentiment analysis of tweets, supporting user feed
 ## Features
 
 - **Sentiment Analysis API**  
-  `/sentiment` accepts a tweet and returns a sentiment prediction (`positive`, `negative`, or `neutral`).
+  `/sentiment` accepts a tweet and returns a sentiment prediction (`positive` or `negative`).
 
 - **Feedback Collection**  
   Users can submit corrections via `/correction`. All corrections are stored in a `.jsonl` file for future model improvement.
