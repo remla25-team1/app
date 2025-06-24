@@ -51,19 +51,24 @@ jobs:
       - name: Generate version tag
         id: tag
         run: |
+          VERSION=$(cat VERSION.txt)
           if [ "${{ inputs.version_type }}" = "semver" ]; then
-            # Semantic versioning (e.g., v0.0.1)
-            NEW_TAG="v$(cat VERSION.txt)"
+            # Semantic versioning (e.g., v0.1.2)
+            NEW_TAG="v${VERSION}"
             echo "Using semantic version: $NEW_TAG"
           else
-            # Dated pre-release (e.g., v0.0.1-pre-20240526-001)
-            BASE_VERSION="v$(cat VERSION.txt)-pre"
+            # Split version into parts and increment patch
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            PATCH=$((PATCH + 1))
+            INCREMENTED_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+            BASE_VERSION="v${INCREMENTED_VERSION}-pre"
             DATE=$(date +'%Y%m%d')
             COUNT=$(git tag --list "${BASE_VERSION}-${DATE}-*" | wc -l)
             NEW_TAG="${BASE_VERSION}-${DATE}-$(printf "%03d" $((COUNT + 1)))"
             echo "Using dated pre-release: $NEW_TAG"
           fi
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
 
       - name: Create and push tag
         run: |

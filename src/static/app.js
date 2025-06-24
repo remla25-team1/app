@@ -38,7 +38,7 @@ async function analyze() {
       const res = await fetch("/version");
       if (!res.ok) throw new Error("Failed to fetch version");
       const data = await res.json();
-      versionDiv.textContent = `Lib Version: ${data.lib_version}, \n App Version: ${data.app_version}, \n model Version ${data.model_version}`;
+      versionDiv.textContent = `Lib Version: ${data.lib_version}, \n App Version: ${data.app_version}, \n Model Version ${data.model_version}`;
     } catch (err) {
       versionDiv.textContent = "Version: unknown";
     }
@@ -71,7 +71,7 @@ function showCorrection() {
   }
 }
 
-  
+
   function hideCorrection() {
     document.getElementById("correction-area").classList.add("hidden");
   }
@@ -126,7 +126,7 @@ function showCorrection() {
       }else{
       hideCorrectionButtons();
       correctionMsg.textContent = "Thank you for your correction!";
-      setTimeout(() => location.reload(), 2000);
+      setTimeout(() => location.reload(), 1000);
       }
     } catch (err) {
       correctionMsg.textContent = "Error: " + err.message;
