@@ -49,28 +49,29 @@ async function analyze() {
   };
   
   
-  function showCorrection() {
-    document.getElementById("correction-area").classList.remove("hidden");
-    document.getElementById("feedback-msg").textContent = "";
+function showCorrection() {
+  document.getElementById("correction-area").classList.remove("hidden");
+  document.getElementById("feedback-msg").textContent = "";
 
-    const { prediction } = window._latestFeedback || {};
-    const buttons = {
-      positive: document.getElementById("btn-positive"),
-      negative: document.getElementById("btn-negative"),
-      neutral: document.getElementById("btn-neutral")
-    };
+  const { prediction } = window._latestFeedback || {};
+  const buttons = {
+    positive: document.getElementById("btn-positive"),
+    negative: document.getElementById("btn-negative"),
+    neutral: document.getElementById("btn-neutral")
+  };
 
-    for (let key in buttons) {
-      buttons[key].disabled = false;
-      buttons[key].classList.remove("disabled");
-    }
-
-    if (prediction && buttons[prediction]) {
-      buttons[prediction].disabled = true;
-      buttons[prediction].classList.add("disabled");
-    }
+  for (let key in buttons) {
+    buttons[key].disabled = false;
+    buttons[key].classList.remove("disabled");
   }
-  
+
+  if (prediction && buttons[prediction]) {
+    buttons[prediction].disabled = true;
+    buttons[prediction].classList.add("disabled");
+  }
+}
+
+
   function hideCorrection() {
     document.getElementById("correction-area").classList.add("hidden");
   }
@@ -83,7 +84,7 @@ async function analyze() {
     }else{
       hideFeedbackButtons();
       correctionMsg.textContent = "Thank you for your feedback!"
-      setTimeout(() => location.reload(), 1000);
+      setTimeout(() => location.reload(), 2000);
     }
   }
 

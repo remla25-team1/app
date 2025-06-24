@@ -24,11 +24,16 @@ COPY --from=builder /root/.local /root/.local
 
 ARG APP_VERSION=unknown
 
-ENV PATH=/root/.local/bin:$PATH \
+ENV REDIS_HOST=redis \
+    REDIS_PORT=6379 \
+    REDIS_DB=0 \
+    CACHE_TTL=3600 \
+    PATH=/root/.local/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     MODEL_SERVICE_HOST=model-service \
 	MODEL_SERVICE_PORT=8081 \
+    MODEL_SERVICE_VERSION=0.0.0 \
     APP_VERSION=${APP_VERSION} \
     PORT=8080
 

@@ -1,12 +1,16 @@
 from flask import Flask, jsonify, request, send_from_directory, Response
+from flasgger import Swagger,swag_from
+from swagger_template import generate_swagger_doc
 from versionutil import VersionUtil
 from prometheus_flask_exporter import PrometheusMetrics
 from prometheus_client import Counter, Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import requests
 import os
 import json
+import redis
 
 app = Flask(__name__, static_folder="static", template_folder="template")
+swagger = Swagger(app) 
 APP_VERSION = os.environ.get("APP_VERSION", "0.0.0")
 PORT = int(os.environ.get("PORT", 8080))
 MODEL_SERVICE_HOST = os.getenv("MODEL_SERVICE_HOST", "localhost")
@@ -22,10 +26,18 @@ def get_ml_version():
     res = requests.get(f"{MODEL_SERVICE_URL}/version")
     return res.json().get("version", "unknown")
 
-model_service_version = get_ml_version()
+model_version = get_ml_version()
+
+# Initialize Redis client
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+CACHE_TTL = int(os.getenv("CACHE_TTL", "3600"))
+rds = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
 
 metrics = PrometheusMetrics(app, path=None)
-metrics.info('app_info', 'app info', version=APP_VERSION, model_version=model_service_version)
+metrics.info('app_info', 'app info', version=APP_VERSION, model_version=model_version)
+
 
 @app.route("/metrics")
 def metrics_endpoint():
@@ -62,7 +74,7 @@ def metrics_endpoint():
 sentiment_prediction_counter = Counter(
     'sentiment_requests_total', 
     'Total number of sentiment prediction',
-    ['prediction', "app_version", 'source'],
+    ['prediction', 'app_version','source']
 )
 
 in_progress_gauge = Gauge(
@@ -72,9 +84,9 @@ in_progress_gauge = Gauge(
 )
 
 sentiment_response_time_hist = Histogram(
-    'sentiment_response_time_seconds', 
+    'sentiment_response_time_seconds',
     'Histogram of /sentiment response time',
-    ['model_version','source', 'app_version'],
+    ['model_version', 'source', 'app_version'],
     buckets=[0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0]
 )
 
@@ -82,14 +94,14 @@ sentiment_response_time_hist = Histogram(
 correction_request_counter = Counter(
     'correction_requests_total', 
     'Total number of /correction requests',
-    ['correction', 'prediction','model_version', 'app_version']
+    ['correction', 'prediction', 'model_version', 'app_version']
 )
 
 
 
 @app.route("/")
 def serve_index():
-    """ 
+    """
     Serve the index.html file.
     ---
     tags:      - Index
@@ -108,6 +120,7 @@ def serve_index():
 
 # Analyze tweets sentiment
 @app.route("/sentiment", methods = ["POST"])
+
 def sentiment():
     """
     Analyze sentiment of a tweet.
@@ -139,14 +152,21 @@ def sentiment():
     if not tweet:
         return jsonify({"error": "Missing tweet field"}), 400
     label = "unknown"
-    with in_progress_gauge.labels(model_version=model_service_version, app_version=APP_VERSION).track_inprogress():
-        with sentiment_response_time_hist.labels(model_version=model_service_version, app_version=APP_VERSION, source="model").time():
+    cached_result = rds.get(tweet)
+    if cached_result:
+        with sentiment_response_time_hist.labels(model_version = model_version, app_version=APP_VERSION, source="cache").time():
+          label = cached_result.decode("utf-8")
+          sentiment_prediction_counter.labels(prediction=label, app_version=APP_VERSION, source = "cache").inc()
+          return jsonify({"tweet": tweet, "result": label})
+    with in_progress_gauge.labels(model_version=model_version, app_version = APP_VERSION).track_inprogress():
+        with sentiment_response_time_hist.labels(model_version = model_version, app_version=APP_VERSION, source="model").time():
             try:
                 res = requests.post(f"{MODEL_SERVICE_URL}/predict", json={"tweet": tweet}, timeout=3)
                 res.raise_for_status()
                 pred = res.json().get("result")
                 label = "positive" if pred == 1 else "negative"
-                sentiment_prediction_counter.labels(prediction=label, app_version = APP_VERSION, source = "model").inc()
+                rds.setex(tweet, CACHE_TTL, label)
+                sentiment_prediction_counter.labels(prediction=label,app_version=APP_VERSION, source="model").inc()
                 return jsonify({"tweet": tweet, "result": label})
             except requests.RequestException as e:
                 return jsonify({"error": "model-service unreachable", "details": str(e), "model_service_url": MODEL_SERVICE_URL }), 502
@@ -154,6 +174,7 @@ def sentiment():
 
 
 @app.route("/correction", methods = ["POST"])
+
 def collect_corrections():
     """
     Collect the correction from users.
@@ -202,11 +223,12 @@ def collect_corrections():
         "prediction": prediction,
         "correction": correction,
     }
-    correction_request_counter.labels(correction = correction, prediction = prediction, app_version = APP_VERSION, model_version = model_service_version).inc()
+    correction_request_counter.labels(app_version = APP_VERSION, model_version = model_version, correction = correction, prediction = prediction).inc()
     with open("corrections.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(record) + "\n")
-
     return "", 200
+
+
     
 
 #Get version
@@ -233,7 +255,7 @@ def version():
     return jsonify({
         "lib_version": lib_version,
         "app_version": APP_VERSION,
-        "model_version" : model_service_version
+        "model_version" : model_version
     })
 
 if __name__ == "__main__":
