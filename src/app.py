@@ -102,20 +102,20 @@ correction_request_counter = Counter(
 @app.route("/")
 def serve_index():
     """
-        Serve the index.html file.
-        ---
-        tags:      - Index
-        summary: Serve the index.html file
-        description: Returns the index.html file from the template folder.
-        responses:
-          200:
-            description: The index.html file.
-            content:
-              text/html:
-                schema:
-                  type: string
-                  example: "<!DOCTYPE html> <html>...</html>"
-        """
+    Serve the index.html file.
+    ---
+    tags:      - Index
+    summary: Serve the index.html file
+    description: Returns the index.html file from the template folder.
+    responses:
+      200:
+        description: The index.html file.
+        content:
+          text/html:
+            schema:
+              type: string
+              example: "<!DOCTYPE html> <html>...</html>"
+    """
     return send_from_directory(app.template_folder, "index.html")
 
 # Analyze tweets sentiment
