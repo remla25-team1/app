@@ -20,6 +20,9 @@ MODEL_SERVICE_URL = f"http://{MODEL_SERVICE_HOST}:{MODEL_SERVICE_PORT}"
 
 # Get model service version
 def get_ml_version():
+    """
+    Retrieve the version of the model service by making a GET request to its /version endpoint.
+    """
     res = requests.get(f"{MODEL_SERVICE_URL}/version")
     return res.json().get("version", "unknown")
 
@@ -38,6 +41,33 @@ metrics.info('app_info', 'app info', version=APP_VERSION, model_version=model_ve
 
 @app.route("/metrics")
 def metrics_endpoint():
+    """
+    Exposes Prometheus metrics for monitoring.
+    ---
+    tags:
+      - Metrics
+    summary: Expose Prometheus metrics
+    description: Returns the metrics in a format that Prometheus can scrape.
+    responses:
+      200:
+        description: Prometheus metrics in text format.
+        content:
+          text/plain:
+            schema:
+              type: string
+              example: |
+                # HELP app_info app info
+                # TYPE app_info gauge
+                app_info{version="0.1.0",model_version="1.0.0"} 1.0
+                # HELP sentiment_requests_total Total number of sentiment prediction
+                # TYPE sentiment_requests_total counter
+                sentiment_requests_total{prediction="positive"} 100
+                sentiment_requests_total{prediction="negative"} 50
+                # HELP sentiment_requests_in_progress Number of /sentiment requests in progress
+                # TYPE sentiment_requests_in_progress gauge
+                sentiment_requests_in_progress{model_version="1.0.0",app_version="0.1.0"} 5
+                sentiment_requests_in_progress{model_version="1.0.0",app_version="0.1.0"} 3
+    """
     return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 
@@ -55,8 +85,8 @@ in_progress_gauge = Gauge(
 
 sentiment_response_time_hist = Histogram(
     'sentiment_response_time_seconds',
-    'Response time of /sentiment route',
-    ['model_version', 'source', 'app_version'], 
+    'Histogram of /sentiment response time',
+    ['model_version', 'source', 'app_version'],
     buckets=[0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0]
 )
 
@@ -71,6 +101,21 @@ correction_request_counter = Counter(
 
 @app.route("/")
 def serve_index():
+    """
+        Serve the index.html file.
+        ---
+        tags:      - Index
+        summary: Serve the index.html file
+        description: Returns the index.html file from the template folder.
+        responses:
+          200:
+            description: The index.html file.
+            content:
+              text/html:
+                schema:
+                  type: string
+                  example: "<!DOCTYPE html> <html>...</html>"
+        """
     return send_from_directory(app.template_folder, "index.html")
 
 # Analyze tweets sentiment
